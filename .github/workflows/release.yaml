@@ -1,0 +1,43 @@
+on:
+  workflow_dispatch:
+
+name: Create Bao Project's RISC-V toolchain release
+
+env:
+  TOOLCHAIN_TAR: riscv-unknown-elf.tar.gz
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    container: baoproject/bao:latest
+    steps:
+      - name: Install dependencies
+        run: |
+            apt-get install texinfo -y
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+            submodules: true
+      - name: Build project
+        run: |
+          make TOOLCHAIN_TAR=$TOOLCHAIN_TAR NUM_BUILD_THREADS=1
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./$TOOLCHAIN_TAR
+          asset_name: $TOOLCHAIN_TAR
